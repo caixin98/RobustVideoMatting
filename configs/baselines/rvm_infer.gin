@@ -1,0 +1,9 @@
+include '/sensei-fs/users/clintonwang/code/burst-matting/configs/infer_base.gin'
+include 'matting/dataset_paths.gin'
+
+exp_name/macro.value = "rvm_test_{datestring}"
+
+SynthMattingDataModule.batch_size = 4
+RealMattingDataModule.batch_size = 1
+SynthMattingDataModule.num_workers = 2
+RealMattingDataModule.num_workers = 0

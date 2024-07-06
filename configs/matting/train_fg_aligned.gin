@@ -1,0 +1,6 @@
+include '/sensei-fs/users/clintonwang/code/burst-matting/configs/train_base.gin'
+include 'matting/dataset_paths.gin'
+include 'matting/debug.gin'
+
+model_type/macro.value = 'fg_aligned'
+exp_name/macro.value = "fg_align_{datestring}"

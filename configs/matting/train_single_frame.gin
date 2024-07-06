@@ -1,0 +1,8 @@
+include 'matting/train_fg_aligned.gin'
+GenerateBurst.burst_size = 1
+VideoMattingDataset.burst_length = 1
+SynthMattingDataModule.batch_size = 8
+Trainer.accumulate_grad_batches = 1
+
+model_type/macro.value = 'single_frame'
+exp_name/macro.value = "single_frame_{datestring}"

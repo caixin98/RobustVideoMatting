@@ -4,6 +4,25 @@ import torch
 from torchvision import transforms
 from torchvision.transforms import functional as F
 
+def get_composite_affine_matrix(transforms, image_size):
+    # 初始为单位矩阵
+    composite_matrix = torch.eye(3)
+    
+    # 循环通过每一个变换
+    for trans in transforms:
+        angle, translate, scale, shear = trans
+        center = (image_size[0] * 0.5 + 0.5, image_size[1] * 0.5 + 0.5)
+        matrix = F._get_inverse_affine_matrix(center, angle, translate, scale, shear)
+        matrix = torch.tensor(matrix).view(2, 3)
+        
+        # 为仿射变换添加行以进行矩阵乘法
+        affine_matrix = torch.cat([matrix, torch.tensor([[0, 0, 1]])], dim=0)
+        
+        # 更新复合矩阵
+        composite_matrix = affine_matrix @ composite_matrix
+    
+    return composite_matrix[:2, :]  # 返回2x3矩阵
+
 
 class MotionAugmentation:
     def __init__(self,
@@ -32,28 +51,18 @@ class MotionAugmentation:
         self.static_affine = static_affine
         self.aspect_ratio_range = aspect_ratio_range
         
-    def __call__(self, fgrs, phas, bgrs):
-        # Foreground affine
-        if random.random() < self.prob_fgr_affine:
-            fgrs, phas = self._motion_affine(fgrs, phas)
-
-        # Background affine
-        if random.random() < self.prob_bgr_affine / 2:
-            bgrs = self._motion_affine(bgrs)
-        if random.random() < self.prob_bgr_affine / 2:
-            fgrs, phas, bgrs = self._motion_affine(fgrs, phas, bgrs)
-                
-        # Still Affine
+    def __call__(self, fgrs, phas, bgrs):                
+        # Still Affine on PIL images
         if self.static_affine:
-            fgrs, phas = self._static_affine(fgrs, phas, scale_ranges=(0.5, 1))
-            bgrs = self._static_affine(bgrs, scale_ranges=(1, 1.5))
+            [fgrs, phas], affine_params = self._static_affine(fgrs, phas, scale_ranges=(0.8, 1.2))
+            bgrs, affine_params = self._static_affine(bgrs, scale_ranges=(1.2, 1.5))
         
         # To tensor
         fgrs = torch.stack([F.to_tensor(fgr) for fgr in fgrs])
         phas = torch.stack([F.to_tensor(pha) for pha in phas])
         bgrs = torch.stack([F.to_tensor(bgr) for bgr in bgrs])
         
-        # Resize
+        # # Resize
         params = transforms.RandomResizedCrop.get_params(fgrs, scale=(1, 1), ratio=self.aspect_ratio_range)
         fgrs = F.resized_crop(fgrs, *params, self.size, interpolation=F.InterpolationMode.BILINEAR)
         phas = F.resized_crop(phas, *params, self.size, interpolation=F.InterpolationMode.BILINEAR)
@@ -66,6 +75,22 @@ class MotionAugmentation:
             phas = F.hflip(phas)
         if random.random() < self.prob_hflip:
             bgrs = F.hflip(bgrs)
+
+        fgrs_affine_params = []
+        bgrs_affine_params = []
+        # Foreground affine
+        if random.random() < self.prob_fgr_affine:
+            [fgrs, phas], affine_params = self._motion_affine(fgrs, phas)
+            fgrs_affine_params.append(affine_params)
+
+        # Background affine
+        if random.random() < self.prob_bgr_affine / 2:
+            bgrs, affine_params = self._motion_affine(bgrs)
+            bgrs_affine_params.append(affine_params)
+        if random.random() < self.prob_bgr_affine / 2:
+            [fgrs, phas, bgrs], affine_params = self._motion_affine(fgrs, phas, bgrs)
+            fgrs_affine_params.append(affine_params)
+            bgrs_affine_params.append(affine_params)
 
         # Noise
         if random.random() < self.prob_noise:
@@ -100,23 +125,42 @@ class MotionAugmentation:
         # Pause
         if random.random() < self.prob_pause:
             fgrs, phas, bgrs = self._motion_pause(fgrs, phas, bgrs)
-        
-        return fgrs, phas, bgrs
+
+        T = len(fgrs)
+        final_affine_matrixs_fgr = [] # T group affine params, final affine params for T frames
+        final_affine_matrixs_bgr = [] # T group affine params, final affine params for T frames
+        for t in range(T):
+            fgr_affine_params_for_t  = []
+            for affine_params in fgrs_affine_params:
+                fgr_affine_params_for_t.append(affine_params[t])
+            fgr_affine_matrix_for_t = get_composite_affine_matrix(fgr_affine_params_for_t, self.size)
+            final_affine_matrixs_fgr.append(fgr_affine_matrix_for_t)
+            bgr_affine_params_for_t  = []
+            for affine_params in bgrs_affine_params:
+                bgr_affine_params_for_t.append(affine_params[t])
+            bgr_affine_matrix_for_t = get_composite_affine_matrix(bgr_affine_params_for_t, self.size)
+            final_affine_matrixs_bgr.append(bgr_affine_matrix_for_t)
+        metadata = {'final_affine_matrixs_fgr': final_affine_matrixs_fgr, 'final_affine_matrixs_bgr': final_affine_matrixs_bgr}
+        return fgrs, phas, bgrs, metadata
     
+    # the input img is Image here, therefore img_size=imgs[0][0].size
     def _static_affine(self, *imgs, scale_ranges):
         params = transforms.RandomAffine.get_params(
             degrees=(-10, 10), translate=(0.1, 0.1), scale_ranges=scale_ranges,
             shears=(-5, 5), img_size=imgs[0][0].size)
         imgs = [[F.affine(t, *params, F.InterpolationMode.BILINEAR) for t in img] for img in imgs]
-        return imgs if len(imgs) > 1 else imgs[0] 
+        # also return the affine params 
+        return imgs if len(imgs) > 1 else imgs[0], params * len(imgs[0])
     
+    # the input img is tensor here, therefore img_size=imgs[0][0].size()
     def _motion_affine(self, *imgs):
         config = dict(degrees=(-10, 10), translate=(0.1, 0.1),
-                      scale_ranges=(0.9, 1.1), shears=(-5, 5), img_size=imgs[0][0].size)
+                      scale_ranges=(0.9, 1.1), shears=(-5, 5), img_size=imgs[0][0].size())
         angleA, (transXA, transYA), scaleA, (shearXA, shearYA) = transforms.RandomAffine.get_params(**config)
         angleB, (transXB, transYB), scaleB, (shearXB, shearYB) = transforms.RandomAffine.get_params(**config)
         
         T = len(imgs[0])
+        affine_params = []
         easing = random_easing_fn()
         for t in range(T):
             percentage = easing(t / (T - 1))
@@ -128,7 +172,9 @@ class MotionAugmentation:
             shearY = lerp(shearYA, shearYB, percentage)
             for img in imgs:
                 img[t] = F.affine(img[t], angle, (transX, transY), scale, (shearX, shearY), F.InterpolationMode.BILINEAR)
-        return imgs if len(imgs) > 1 else imgs[0]
+        # also return the affine params 
+            affine_params.append((angle, (transX, transY), scale, (shearX, shearY)))
+        return imgs if len(imgs) > 1 else imgs[0], affine_params
     
     def _motion_noise(self, *imgs):
         grain_size = random.random() * 3 + 1 # range 1 ~ 4

@@ -1,0 +1,15 @@
+include 'matting/dataloading.gin'
+import utils.gin_util
+import utils.image.color_utils
+import gin.torch.external_configurables
+
+# here, anything in the curly braces should be accessible by gin query
+datestring/macro.value = "{datetime.datetime.now().strftime('%m%d_%H%M%S')}"
+logging_root/macro.value = '/sensei-fs/users/clintonwang/experiments/dumps/'
+logging_prefix/macro.value = "{datestring}"
+
+TQDMProgressBar.refresh_rate = 1
+
+# gin config logging: logging_root/exp_name/logging_prefix/hparams.gin
+GinLogCallback.log_dir = @ginlogging/gin_join_path()
+ginlogging/gin_join_path.input_list = [@logging_root/macro(), @exp_name/macro(), @logging_prefix/macro()]

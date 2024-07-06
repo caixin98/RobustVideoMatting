@@ -1,0 +1,16 @@
+# MattingModel.skip_val = True
+# MattingModel.fixed_patch = True
+MattingDataset.train_test_split = ([5],5)
+RealMattingDataModule.batch_size = 0
+SynthMattingDataModule.num_workers = 4
+
+# dataloading settings
+SyntheticMattingDataset.num_fgs = 2
+# SyntheticMattingDataset.num_bgs = 1
+
+MattingModel.train_vis_freq = 100
+# Trainer.limit_val_batches = 0.1
+# Trainer.val_check_interval = 1.0
+Trainer.log_every_n_steps = 50
+Trainer.check_val_every_n_epoch = 10 # every 1000 steps
+# SynthMattingDataModule.num_workers = 0

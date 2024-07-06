@@ -1,0 +1,10 @@
+#DavosDataset.davis_data_path = 's3://nextcamtemp/zhoutongz/datasets/DAVIS-2017-480-image-and-mask.hdf5'
+zurich_paths.s3_path = 's3://nextcamtemp/zhoutongz/datasets/Zurich-RAW-to-DSLR-Dataset-canon-{split}.hdf5'
+zurich_paths.local_cache_path = '~/.cached_dataset'
+
+matting_dirs.matting = '/sensei-fs/tenants/Sensei-Adobe-EPG/nextcam/datasets/matting/matting-dataset'
+matting_dirs.polarized = '/sensei-fs/tenants/Sensei-Adobe-EPG/nextcam/datasets/matting/adobe-polarized-masks'
+matting_dirs.video_gs = '/sensei-fs/users/clintonwang/data/greenscreen'
+matting_dirs.VideoMatte240K = '/sensei-fs/tenants/Sensei-Adobe-EPG/nextcam/datasets/matting/VideoMatte240K_JPEG_HD'
+
+burst_paths.internal = '/sensei-fs/users/clintonwang/data/real-bursts'

@@ -1,0 +1,15 @@
+include 'matting/random_hyperparams.gin'
+SynthMattingDataModule.batch_size = 2
+# SynthMattingDataModule.batch_size = 1 # if not using patches
+SynthMattingDataModule.num_workers = 0
+# RealMattingDataModule.batch_size = 1
+# RealMattingDataModule.num_workers = 0
+# RealMattingDataModule.scale_factor = 0.2
+ModelCheckpoint.save_last = False
+ModelCheckpoint.every_n_epochs = 10000
+
+MattingModel.max_patches = 8
+# MattingModel.patch_size = 256
+# Trainer.max_epochs = 1000
+# Trainer.log_every_n_steps = 20
+exp_name/macro.value = "matting_test"

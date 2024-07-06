@@ -1,0 +1,43 @@
+{
+    "data_path": "/home/xcai/data",
+    "fg_phas":  {
+        "high_res": {
+            "path": "matting-dataset/high_res_portrait_ART_team",
+            "img_pattern": "*_input.jpg",
+            "mask_pattern": "*_mask.jpg",
+            "preprocessing": "remove_last_100"
+        },
+        "aim_train": {
+            "path": "matting-dataset/Combined_Dataset/Training_set/*",
+            "img_pattern": "fg/*.jpg",
+            "mask_pattern": "alpha/*.jpg",
+            "preprocessing": null
+        },
+        "aim_test": {
+            "path": "matting-dataset/Combined_Dataset/Test_set/*",
+            "img_pattern": "fg/*.png",
+            "mask_pattern": "alpha/*.png",
+            "preprocessing": null
+        }
+    },
+
+
+    "bg_imgs": {
+        "bg_20k_train": {
+            "path": "BG-20k/train",
+            "img_pattern": "*.jpg",
+            "preprocessing": null
+        },
+        "bg_20k_test": {
+            "path": "BG-20k/testval",
+            "img_pattern": "*.jpg",
+            "preprocessing": null
+        }
+    },
+    
+    "zurich_raw": {
+        "train": "Zurich-RAW-to-DSLR-Dataset-canon-train.hdf5",
+        "test": "Zurich-RAW-to-DSLR-Dataset-canon-test.hdf5"
+    }
+
+}

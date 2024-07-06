@@ -1,0 +1,13 @@
+include 'matting/synth_data_gen.gin'
+# training params: data loading
+SynthMattingDataModule.fg_source = 'matting'
+SynthMattingDataModule.bg_source = 'zurich'
+SynthMattingDataModule.batch_size = 4
+SynthMattingDataModule.num_workers = 4
+SynthMattingDataModule.samples_per_epoch = 100
+# SyntheticVideoMattingDataset.fg_source = 'polarized'
+# SyntheticVideoMattingDataset.fg_subset = 1
+RealMattingDataModule.max_burst_length = 8
+RealMattingDataModule.batch_size = 1
+RealMattingDataModule.num_workers = 4
+RealMattingDataModule.scale_factor = 0.5

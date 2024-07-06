@@ -1,0 +1,36 @@
+include 'matting/train_single_frame.gin'
+
+random_hyperparams/macro.value = {
+    'torch.optim.Adam.lr': [2e-4],
+    'torch.optim.Adam.betas': [(0.9, 0.999)],
+    'SingleFrameNetwork.use_attention': [False],
+    'SingleFrameNetwork.num_channels': [64],
+    'SingleFrameNetwork.upsample_type': ['interpolate'],
+    'SingleFrameNetwork.basic_unit': ['backprojection'],
+    'MattingModel.seg_transition': [999000],
+    'SingleFrameNetwork.normalization_type': ['batch'],#['batch', 'layer', None],
+    'SingleFrameNetwork.activation_type': ['gelu'],
+    # 'SingleFrameModel.network_type': ['dinov2_vits14', 'dinov2_vitb14', 'dinov2_vitl14'],
+    # 'MattingModel.patch_size': [252],
+    # 'MattingModel.use_srgb': [True],
+    'SingleFrameModel.network_type': ['custom'],
+    # 'SingleFrameModel.network_type': ['lraspp-mobilenet'],
+    'MattingModel.loss_weights': [{
+        'l1': 1,
+        'laplacian': 1,
+    }]
+    # 'MattingModel.loss_weights': [{
+    #     'l1': 1,
+    #     'edge': 1,
+    #     'FG_l1': 1,
+    # }, {
+    #     'l1': 1,
+    #     'edge': 1,
+    #     'sparsity': 0.1,
+    #     'FG_l1': 1,
+    # }, {
+    #     'l1': 1,
+    #     'edge': 2,
+    #     'FG_l1': 1,
+    # }]
+}
