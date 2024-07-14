@@ -18,6 +18,9 @@ class ForegroundAlphaDataset(Dataset):
         0: 'high_res',
         1: 'aim_train',
         2: 'aim_test',
+        3: "distinctions_train",
+        4: "distinctions_test",
+        5: "distinctions_sample_train",
     }
     data_manager = MattingDatasetManager()
     def __init__(self, train_test_subset: subset_type, split: str = "train", samples_per_epoch: int = None):

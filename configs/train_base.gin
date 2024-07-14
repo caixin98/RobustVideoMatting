@@ -1,67 +1,23 @@
-include 'matting/dataloading.gin'
-import utils.gin_util
-import utils.image.color_utils
-import gin.torch.external_configurables
-
-# training params: optimizer
-matting.optim.optimizer_class = @torch.optim.Adam
-matting.optim.scheduler_class = @torch.optim.lr_scheduler.MultiStepLR
-torch.optim.Adam.lr = 1e-4
-torch.optim.Adam.betas = (0.5, 0.999)
-torch.optim.Adam.eps = 1e-8
-torch.optim.Adam.weight_decay = 0
-torch.optim.lr_scheduler.MultiStepLR.milestones = [30,60] # 3K and 6K datapoints
-torch.optim.lr_scheduler.MultiStepLR.gamma = 0.2
-
-# training params: data loading
-# Trainer.max_steps = 10000
-Trainer.max_epochs = 100 #10K datapoints
-Trainer.val_check_interval = 1.0 # every 1000 steps
-Trainer.log_every_n_steps = 50
-Trainer.accumulate_grad_batches = 1
-# Trainer.gradient_clip_val = 1
-
-# model architecture
-EDA.upsample_type = 'deconv'
-SingleFrameNetwork.upsample_type = 'upsample'
-SingleFrameNetwork.use_attention = True
-SingleFrameNetwork.num_channels = 48
-SingleFrameNetwork.basic_unit = 'backprojection'
-SingleFrameNetwork.activation_type = 'gelu'
-SingleFrameNetwork.normalization_type = 'batch'
-SingleFrameModel.network_type = 'custom'
-MattingModel.use_srgb = False
-MattingModel.use_patches = True
-
-# pipeline settings
-MattingModel.loss_weights = {
-    'l1': 1,
-    'edge': 1,
-    'FG_l1': 1,
-}
-MattingModel.patch_size = 256
-MattingModel.max_seg_imbalance = 0.9
-MattingModel.upweight_patch_centers = True
-MattingModel.seg_transition = 999000 #1000
-MattingModel.max_patches = 8
-
-# logging
-MattingModel.train_vis_freq = 500
-datestring/macro.value = "{datetime.datetime.now().strftime('%m%d_%H%M%S')}"
-logging_root/macro.value = '/sensei-fs/users/clintonwang/experiments/dumps/'
-logging_prefix/macro.value = "{datestring}"
-
-TQDMProgressBar.refresh_rate = 1
-
-GinLogCallback.log_dir = @ginlogging/gin_join_path()
-ginlogging/gin_join_path.input_list = [@logging_root/macro(), @exp_name/macro(), @logging_prefix/macro()]
-
-# checkpoint_path = logging_root/exp_name/logging_prefix/checkpoints
-ModelCheckpoint.dirpath = @checkpoint/gin_join_path()
-checkpoint/gin_join_path.input_list = [@logging_root/macro(), @exp_name/macro(), @logging_prefix/macro(), 'checkpoints']
-ModelCheckpoint.filename = "{epoch}-{step}-{loss:.4f}"
-ModelCheckpoint.save_last = True
-ModelCheckpoint.auto_insert_metric_name = True
-ModelCheckpoint.every_n_epochs = 2
-# ModelCheckpoint.save_top_k = 2
-# ModelCheckpoint.monitor = 'val/loss/dataloader_idx_0'
+include 'configs/matting/image2burst.gin'
+Trainer.dataset = "synthetic_patch"
+Trainer.size = 1024
+Trainer.matting_subset = ([3], 4)
+Trainer.checkpoint = None
+Trainer.model = 'bipnet'
+Trainer.batch_size = 1
+Trainer.num_workers = 8
+Trainer.patch_size = 192
+Trainer.lr = 1e-4
+Trainer.log_dir = "logs/train_base"
+Trainer.disable_validation = True
+Trainer.epoch_start = 0
+Trainer.epoch_end = 40
+Trainer.checkpoint_save_interval = 5000
+Trainer.log_train_loss_interval = 10
+Trainer.checkpoint_dir = "logs/train_base/checkpoints"
+Trainer.distributed_addr = "localhost"
+Trainer.distributed_port = "12355"
+Trainer.disable_progress_bar = False
+Trainer.disable_mixed_precision = False
+Trainer.log_train_images_interval = 100
+Trainer.predict_seq = False

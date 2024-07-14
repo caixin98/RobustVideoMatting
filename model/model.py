@@ -39,6 +39,7 @@ class MattingNetwork(nn.Module):
         
     def forward(self,
                 src: Tensor,
+                trimap: Optional[Tensor] = None,
                 r1: Optional[Tensor] = None,
                 r2: Optional[Tensor] = None,
                 r3: Optional[Tensor] = None,
@@ -46,6 +47,8 @@ class MattingNetwork(nn.Module):
                 downsample_ratio: float = 1,
                 segmentation_pass: bool = False):
         
+        
+
         if downsample_ratio != 1:
             src_sm = self._interpolate(src, scale_factor=downsample_ratio)
         else:

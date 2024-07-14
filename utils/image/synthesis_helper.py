@@ -36,8 +36,86 @@ def generate_flow_field(matrix, image_size):
     return flow_field
 
 def apply_flow_field(image, flow_field):
-    # 使用流场反向映射图像
-    return F.resample(image, -flow_field)
+    # image shape: [C, H, W]
+    # flow_field shape: [2, H, W]，第一个通道为水平位移，第二个通道为垂直位移
+    # 获取图像的高度和宽度
+    flow_field = flow_field.clone()
+    h, w = image.shape[1:]
+
+    # 生成归一化的坐标网格
+    y, x = torch.meshgrid(torch.linspace(-1, 1, h), torch.linspace(-1, 1, w))
+    grid = torch.stack((x, y), 2)  # Shape: [H, W, 2]
+
+    # 调整flow_field的范围从像素位移转为归一化位移
+    flow_field = flow_field.permute(1, 2, 0)  # 重排为 [H, W, 2]
+    flow_field[..., 0] = flow_field[..., 0] / (w / 2)  # 归一化x
+    flow_field[..., 1] = flow_field[..., 1] / (h / 2)  # 归一化y
+
+    # 将光流应用于坐标网格
+    new_grid = grid + flow_field
+
+    # 使用grid_sample进行重映射
+    # image 需要是 [1, C, H, W] 或 [B, C, H, W]
+    # new_grid 需要是 [1, H, W, 2] 或 [B, H, W, 2]
+    remapped_image = F.grid_sample(image.unsqueeze(0), new_grid.unsqueeze(0), mode='bilinear', padding_mode='zeros', align_corners=True)
+
+    return remapped_image.squeeze(0)
+
+
+def flow_to_color(flow):
+    if flow.shape[0] == 2:
+        flow = flow.permute(1, 2, 0)
+    print(flow.shape)
+    # 计算光流的角度和幅度
+    magnitude = torch.sqrt(flow[..., 0]**2 + flow[..., 1]**2)
+    angle = torch.atan2(flow[..., 1], flow[..., 0]) + np.pi
+    
+    # 归一化角度和幅度
+    angle /= 2 * np.pi  # 转换到0-1范围
+    normalized_magnitude = torch.clip(magnitude / magnitude.max(), 0, 1)
+    
+    # 创建HSV表示
+    hsv = torch.zeros(flow.shape[0], flow.shape[1], 3)
+    hsv[..., 0] = angle
+    hsv[..., 1] = 1  # 饱和度固定为最大
+    hsv[..., 2] = normalized_magnitude  # 亮度由幅度决定
+    
+    # HSV到RGB的转换
+    return hsv_to_rgb(hsv)
+
+def hsv_to_rgb(hsv):
+    h, s, v = hsv[..., 0], hsv[..., 1], hsv[..., 2]
+    c = v * s
+    x = c * (1 - abs((h * 6) % 2 - 1))
+    m = v - c
+
+    h = (h * 6).int()
+    r = torch.zeros_like(h, dtype=torch.float32)
+    g = torch.zeros_like(h, dtype=torch.float32)
+    b = torch.zeros_like(h, dtype=torch.float32)
+
+    r[(0 <= h) & (h < 1)] = c[(0 <= h) & (h < 1)]
+    g[(0 <= h) & (h < 1)] = x[(0 <= h) & (h < 1)]
+
+    r[(1 <= h) & (h < 2)] = x[(1 <= h) & (h < 2)]
+    g[(1 <= h) & (h < 2)] = c[(1 <= h) & (h < 2)]
+
+    g[(2 <= h) & (h < 3)] = c[(2 <= h) & (h < 3)]
+    b[(2 <= h) & (h < 3)] = x[(2 <= h) & (h < 3)]
+
+    g[(3 <= h) & (h < 4)] = x[(3 <= h) & (h < 4)]
+    b[(3 <= h) & (h < 4)] = c[(3 <= h) & (h < 4)]
+
+    r[(4 <= h) & (h < 5)] = x[(4 <= h) & (h < 5)]
+    b[(4 <= h) & (h < 5)] = c[(4 <= h) & (h < 5)]
+
+    r[(5 <= h) & (h < 6)] = c[(5 <= h) & (h < 6)]
+    b[(5 <= h) & (h < 6)] = x[(5 <= h) & (h < 6)]
+
+    rgb = torch.stack([r, g, b], dim=-1)
+    rgb = (rgb + m.unsqueeze(-1)).clip(0, 1)
+
+    return rgb
 
 
 @gin.configurable(name_or_fn='burst_motion_params')
@@ -67,7 +145,7 @@ def get_unprocessing_settings(random_ccm, random_gains, random_rgb_gain_range,
 def get_motion_aug_params(size, prob_fgr_affine, prob_bgr_affine, prob_noise,
                           prob_color_jitter, prob_grayscale, prob_sharpness,
                           prob_blur, prob_hflip, prob_pause, static_affine,
-                          aspect_ratio_range):
+                          aspect_ratio_range,motion_affine_params):
     return locals()
 
 

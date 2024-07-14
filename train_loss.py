@@ -16,18 +16,21 @@ def matting_loss(pred_fgr, pred_pha, true_fgr, true_pha):
     # Alpha losses
     loss['pha_l1'] = F.l1_loss(pred_pha, true_pha)
     loss['pha_laplacian'] = laplacian_loss(pred_pha.flatten(0, 1), true_pha.flatten(0, 1))
-    loss['pha_coherence'] = F.mse_loss(pred_pha[:, 1:] - pred_pha[:, :-1],
-                                       true_pha[:, 1:] - true_pha[:, :-1]) * 5
+    # loss['pha_coherence'] = F.mse_loss(pred_pha[:, 1:] - pred_pha[:, :-1],
+    #                                    true_pha[:, 1:] - true_pha[:, :-1]) * 5
     # Foreground losses
     true_msk = true_pha.gt(0)
     pred_fgr = pred_fgr * true_msk
     true_fgr = true_fgr * true_msk
-    loss['fgr_l1'] = F.l1_loss(pred_fgr, true_fgr)
-    loss['fgr_coherence'] = F.mse_loss(pred_fgr[:, 1:] - pred_fgr[:, :-1],
-                                       true_fgr[:, 1:] - true_fgr[:, :-1]) * 5
+    # loss['fgr_l1'] = F.l1_loss(pred_fgr, true_fgr)
+
+    # loss['fgr_coherence'] = F.mse_loss(pred_fgr[:, 1:] - pred_fgr[:, :-1],
+    #                                    true_fgr[:, 1:] - true_fgr[:, :-1]) * 5
     # Total
-    loss['total'] = loss['pha_l1'] + loss['pha_coherence'] + loss['pha_laplacian'] \
-                  + loss['fgr_l1'] + loss['fgr_coherence']
+    # loss['total'] = loss['pha_l1'] + loss['pha_coherence'] + loss['pha_laplacian'] \
+    #               + loss['fgr_l1'] + loss['fgr_coherence']
+    # loss['total'] = loss['pha_l1'] + loss['pha_laplacian'] + loss['fgr_l1']
+    loss['total'] = loss['pha_l1'] + loss['pha_laplacian']
     return loss
 
 def segmentation_loss(pred_seg, true_seg):

@@ -18,6 +18,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from typing import Optional, Tuple
 from tqdm.auto import tqdm
+from model import MattingNetwork
 
 from inference_utils import VideoReader, VideoWriter, ImageSequenceReader, ImageSequenceWriter
 
@@ -124,7 +125,8 @@ def convert_video(model,
                     downsample_ratio = auto_downsample_ratio(*src.shape[2:])
 
                 src = src.to(device, dtype, non_blocking=True).unsqueeze(0) # [B, T, C, H, W]
-                fgr, pha, *rec = model(src, *rec, downsample_ratio)
+                # the second src is the placeholder for the trimap
+                fgr, pha, *rec = model(src, src, *rec, downsample_ratio)
 
                 if output_foreground is not None:
                     writer_fgr.write(fgr[0])
@@ -170,7 +172,6 @@ class Converter:
     
 if __name__ == '__main__':
     import argparse
-    from model import MattingNetwork
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--variant', type=str, required=True, choices=['mobilenetv3', 'resnet50'])

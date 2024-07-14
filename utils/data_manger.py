@@ -6,6 +6,10 @@ def remove_last_100(img_paths, mask_paths):
     return img_paths[:-100], mask_paths[:-100]
 def take_last_100(img_paths, mask_paths):   
     return img_paths[-100:], mask_paths[-100:]
+def take_first_10(img_paths, mask_paths):   
+    return img_paths[:10], mask_paths[:10]
+def take_first_10_bg(img_paths):   
+    return img_paths[:10]
 
 class DatasetManager:
     def __init__(self, data_key = None, config_path='dataset/datasets_config.json'):

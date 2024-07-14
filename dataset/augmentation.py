@@ -3,7 +3,7 @@ import random
 import torch
 from torchvision import transforms
 from torchvision.transforms import functional as F
-
+#image_size = (1080, 1920) (H, W)
 def get_composite_affine_matrix(transforms, image_size):
     # 初始为单位矩阵
     composite_matrix = torch.eye(3)
@@ -11,7 +11,9 @@ def get_composite_affine_matrix(transforms, image_size):
     # 循环通过每一个变换
     for trans in transforms:
         angle, translate, scale, shear = trans
-        center = (image_size[0] * 0.5 + 0.5, image_size[1] * 0.5 + 0.5)
+
+        center = (image_size[1] * 0.5 + 0.5, image_size[0] * 0.5 + 0.5)
+        # the center of the image is (x, y) = (W/2, H/2)
         matrix = F._get_inverse_affine_matrix(center, angle, translate, scale, shear)
         matrix = torch.tensor(matrix).view(2, 3)
         
@@ -36,6 +38,8 @@ class MotionAugmentation:
                  prob_blur,
                  prob_hflip,
                  prob_pause,
+                 motion_affine_params=None,
+                 cuda = False,
                  static_affine=True,
                  aspect_ratio_range=(0.9, 1.1)):
         self.size = size
@@ -48,9 +52,10 @@ class MotionAugmentation:
         self.prob_blur = prob_blur
         self.prob_hflip = prob_hflip
         self.prob_pause = prob_pause
+        self.cuda = cuda
         self.static_affine = static_affine
         self.aspect_ratio_range = aspect_ratio_range
-        
+        self.motion_affine_params = motion_affine_params
     def __call__(self, fgrs, phas, bgrs):                
         # Still Affine on PIL images
         if self.static_affine:
@@ -61,7 +66,8 @@ class MotionAugmentation:
         fgrs = torch.stack([F.to_tensor(fgr) for fgr in fgrs])
         phas = torch.stack([F.to_tensor(pha) for pha in phas])
         bgrs = torch.stack([F.to_tensor(bgr) for bgr in bgrs])
-        
+        if self.cuda:
+            fgrs, phas, bgrs = fgrs.cuda(), phas.cuda(), bgrs.cuda()
         # # Resize
         params = transforms.RandomResizedCrop.get_params(fgrs, scale=(1, 1), ratio=self.aspect_ratio_range)
         fgrs = F.resized_crop(fgrs, *params, self.size, interpolation=F.InterpolationMode.BILINEAR)
@@ -154,8 +160,14 @@ class MotionAugmentation:
     
     # the input img is tensor here, therefore img_size=imgs[0][0].size()
     def _motion_affine(self, *imgs):
-        config = dict(degrees=(-10, 10), translate=(0.1, 0.1),
-                      scale_ranges=(0.9, 1.1), shears=(-5, 5), img_size=imgs[0][0].size())
+        if self.motion_affine_params is None:
+            degree = (-5, 5)
+            translate = (0.005, 0.005)
+            scale_ranges = (0.9, 1.1)
+            shears = (-3, 3)
+        else:
+            degree, translate, scale_ranges, shears = self.motion_affine_params
+        config = dict(degrees=degree, translate=translate, scale_ranges=scale_ranges, shears=shears, img_size=imgs[0][0].size())
         angleA, (transXA, transYA), scaleA, (shearXA, shearYA) = transforms.RandomAffine.get_params(**config)
         angleB, (transXB, transYB), scaleB, (shearXB, shearYB) = transforms.RandomAffine.get_params(**config)
         
@@ -185,6 +197,8 @@ class MotionAugmentation:
             noise.mul_(random.random() * 0.2 / grain_size)
             if grain_size != 1:
                 noise = F.resize(noise, (H, W))
+            if self.cuda:
+                noise = noise.cuda()
             img.add_(noise).clamp_(0, 1)
         return imgs if len(imgs) > 1 else imgs[0]
     

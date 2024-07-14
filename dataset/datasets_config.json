@@ -18,20 +18,37 @@
             "img_pattern": "fg/*.png",
             "mask_pattern": "alpha/*.png",
             "preprocessing": null
+        },
+        "distinctions_train": {
+            "path": "Distinctions/train",
+            "img_pattern": "fgr/*.png",
+            "mask_pattern": "pha/*.png",
+            "preprocessing": null
+        },
+        "distinctions_test": {
+            "path": "Distinctions/test",
+            "img_pattern": "fgr/*.png",
+            "mask_pattern": "pha/*.png",
+            "preprocessing": null
+        },
+        "distinctions_sample_train": {
+            "path": "Distinctions/train",
+            "img_pattern": "fgr/h_*.png",
+            "mask_pattern": "pha/h_*.png",
+            "preprocessing": "take_first_10"
         }
     },
-
 
     "bg_imgs": {
         "bg_20k_train": {
             "path": "BG-20k/train",
             "img_pattern": "*.jpg",
-            "preprocessing": null
+            "preprocessing": "take_first_10_bg"
         },
         "bg_20k_test": {
             "path": "BG-20k/testval",
             "img_pattern": "*.jpg",
-            "preprocessing": null
+            "preprocessing": "take_first_10_bg"
         }
     },
     

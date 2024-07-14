@@ -1,0 +1,14 @@
+include '/home/xcai/caixin/RobustVideoMatting/configs/matting/image2burst.gin'
+motion_aug_params.size = (1024, 1024)
+motion_aug_params.prob_fgr_affine =  0.95
+motion_aug_params.prob_bgr_affine = 0.0
+motion_aug_params.prob_noise = 0.05
+motion_aug_params.prob_color_jitter = 0.3
+motion_aug_params.prob_grayscale = 0.03
+motion_aug_params.prob_sharpness = 0.05
+motion_aug_params.prob_blur = 0.02
+motion_aug_params.prob_hflip = 0.5
+motion_aug_params.prob_pause = 0.03
+motion_aug_params.static_affine = False
+motion_aug_params.aspect_ratio_range = (0.95, 1.05)
+motion_aug_params.motion_affine_params = [(-5,5), (0.01,0.01), (0.9,1.1), (-5,5)]

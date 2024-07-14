@@ -1,9 +1,3 @@
-# simulated affine motion in synthetic burst
-burst_motion_params.max_translation=8.
-burst_motion_params.max_rotation=1.
-burst_motion_params.max_shear=0.
-burst_motion_params.max_scale=0
-burst_motion_params.border_crop=None
 # image processing params
 unprocessing_settings.random_rgb_gain_range=[0.9, 1.1]#[0.5, 2.]
 unprocessing_settings.random_ccm=False

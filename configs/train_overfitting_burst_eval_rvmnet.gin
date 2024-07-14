@@ -1,0 +1,22 @@
+include 'configs/train_base.gin'
+Trainer.dataset = "burst_eval"
+Trainer.train_data = "data/burst_patch_overfit"
+Trainer.val_data = "data/burst_patch_overfit"
+Trainer.checkpoint = "rvm_mobilenetv3.pth"
+Trainer.model = 'rvmnet'
+Trainer.batch_size = 1
+Trainer.num_workers = 1
+Trainer.patch_size = 192
+Trainer.lr = 1e-5
+Trainer.log_dir = "logs/train_overfitting_burst_eval_rvmnet"
+Trainer.disable_validation = True
+Trainer.epoch_start = 0
+Trainer.epoch_end = 4000
+Trainer.checkpoint_save_interval = 500
+Trainer.log_train_loss_interval = 10
+Trainer.checkpoint_dir = "logs/train_overfitting_burst_eval_rvmnet/checkpoints"
+Trainer.distributed_addr = "localhost"
+Trainer.distributed_port = "12355"
+Trainer.disable_progress_bar = False
+Trainer.disable_mixed_precision = False
+Trainer.log_train_images_interval = 20

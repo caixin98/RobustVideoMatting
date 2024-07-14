@@ -43,6 +43,13 @@ import torch
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 
+def find_directories(root_path, dir_name):
+    matches = []
+    for root, dirs, files in os.walk(root_path):
+        for directory in dirs:
+            if directory == dir_name:
+                matches.append(os.path.join(root, directory))
+    return matches
 
 class Evaluator:
     def __init__(self):
@@ -55,11 +62,12 @@ class Evaluator:
         parser = argparse.ArgumentParser()
         parser.add_argument('--pred-dir', type=str, required=True)
         parser.add_argument('--true-dir', type=str, required=True)
+
         parser.add_argument('--num-workers', type=int, default=48)
         parser.add_argument('--metrics', type=str, nargs='+', default=[
             'pha_mad', 'pha_mse', 'pha_grad', 'pha_dtssd', 'fgr_mse'])
         self.args = parser.parse_args()
-        
+        print(self.args)
     def init_metrics(self):
         self.mad = MetricMAD()
         self.mse = MetricMSE()
@@ -71,12 +79,20 @@ class Evaluator:
         position = 0
         
         with ThreadPoolExecutor(max_workers=self.args.num_workers) as executor:
-            for dataset in sorted(os.listdir(self.args.pred_dir)):
-                if os.path.isdir(os.path.join(self.args.pred_dir, dataset)):
-                    for clip in sorted(os.listdir(os.path.join(self.args.pred_dir, dataset))):
-                        future = executor.submit(self.evaluate_worker, dataset, clip, position)
-                        tasks.append((dataset, clip, future))
-                        position += 1
+            all_phas = find_directories(self.args.pred_dir, 'pha')
+            # print(all_phas)
+            for pha in all_phas:
+                seq_name = pha.split(self.args.pred_dir,)[-1].split("pha")[-2].strip('/')
+                if len(seq_name.split('/')) == 1:
+                    dataset = ""
+                    clip = seq_name
+                elif len(seq_name.split('/')) == 2:
+                    dataset, clip = seq_name.split('/')
+                else:
+                    raise ValueError(f"Invalid sequence name: {seq_name}")
+                future = executor.submit(self.evaluate_worker, dataset, clip, position)
+                tasks.append((dataset, clip, future))
+                position += 1
                     
         self.results = [(dataset, clip, future.result()) for dataset, clip, future in tasks]
         
@@ -114,7 +130,10 @@ class Evaluator:
         true_pha_tm1 = None
         
         for i, framename in enumerate(tqdm(framenames, desc=f'{dataset} {clip}', position=position, dynamic_ncols=True)):
-            true_pha = cv2.imread(os.path.join(self.args.true_dir, dataset, clip, 'pha', framename), cv2.IMREAD_GRAYSCALE)
+            if os.path.exists(os.path.join(self.args.true_dir, dataset, clip, 'pha', framename)) is False:
+                true_pha = cv2.imread(os.path.join(self.args.true_dir, dataset, clip, 'pha', framename.replace('.png', '.jpg')), cv2.IMREAD_GRAYSCALE)
+            else:
+                true_pha = cv2.imread(os.path.join(self.args.true_dir, dataset, clip, 'pha', framename), cv2.IMREAD_GRAYSCALE)
             pred_pha = cv2.imread(os.path.join(self.args.pred_dir, dataset, clip, 'pha', framename), cv2.IMREAD_GRAYSCALE)
             
             true_pha = torch.from_numpy(true_pha).cuda(non_blocking=True).float().div_(255)
@@ -138,13 +157,17 @@ class Evaluator:
             true_pha_tm1 = true_pha
             
             if 'fgr_mse' in self.args.metrics:
-                true_fgr = cv2.imread(os.path.join(self.args.true_dir, dataset, clip, 'fgr', framename), cv2.IMREAD_COLOR)
+                if os.path.exists(os.path.join(self.args.true_dir, dataset, clip, 'fgr', framename)) is False:
+                    true_fgr = cv2.imread(os.path.join(self.args.true_dir, dataset, clip, 'fgr', framename.replace('.png', '.jpg')), cv2.IMREAD_COLOR)
+                else:
+                    true_fgr = cv2.imread(os.path.join(self.args.true_dir, dataset, clip, 'fgr', framename), cv2.IMREAD_COLOR)
                 pred_fgr = cv2.imread(os.path.join(self.args.pred_dir, dataset, clip, 'fgr', framename), cv2.IMREAD_COLOR)
                 
                 true_fgr = torch.from_numpy(true_fgr).float().div_(255)
                 pred_fgr = torch.from_numpy(pred_fgr).float().div_(255)
                 
                 true_msk = true_pha > 0
+                true_msk = true_msk.cpu()
                 metrics['fgr_mse'].append(self.mse(pred_fgr[true_msk], true_fgr[true_msk]))
 
         return metrics
@@ -172,14 +195,14 @@ class MetricGRAD:
         return ((true_grad - pred_grad) ** 2).sum() / 1000
     
     def gauss_gradient(self, img):
-        img_filtered_x = kornia.filters.filter2D(img[None, None, :, :], self.filter_x, border_type='replicate')[0, 0]
-        img_filtered_y = kornia.filters.filter2D(img[None, None, :, :], self.filter_y, border_type='replicate')[0, 0]
+        img_filtered_x = kornia.filters.filter2d(img[None, None, :, :], self.filter_x, border_type='replicate')[0, 0]
+        img_filtered_y = kornia.filters.filter2d(img[None, None, :, :], self.filter_y, border_type='replicate')[0, 0]
         return (img_filtered_x**2 + img_filtered_y**2).sqrt()
     
     @staticmethod
     def gauss_filter(sigma, epsilon=1e-2):
         half_size = np.ceil(sigma * np.sqrt(-2 * np.log(np.sqrt(2 * np.pi) * sigma * epsilon)))
-        size = np.int(2 * half_size + 1)
+        size = int(2 * half_size + 1)
 
         # create filter in x axis
         filter_x = np.zeros((size, size))

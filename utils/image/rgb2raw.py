@@ -422,13 +422,13 @@ def process_linear_rgb_batch(image, meta_info, return_np=False):
     return image
 
 
-def process_linear_image_raw(image, meta_info, demosaic=True):
+def process_linear_image_raw(image, meta_info, apply_demosaic=True):
     image = apply_gains(image,
                         meta_info['rgb_gain'],
                         meta_info['red_gain'],
                         meta_info['blue_gain'],
                         apply_rgb_gain=False)
-    if demosaic:
+    if apply_demosaic:
         image = demosaic(image)
     image = apply_ccm(image, meta_info['cam2rgb'])
 
