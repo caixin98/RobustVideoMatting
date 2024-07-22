@@ -181,29 +181,21 @@ class Trainer:
                 bgr_mask = (1 - alpha_burst.min(dim=1, keepdim=True).values).gt(0)
                 loss = matting_loss_v2(pred_fgr, pred_bgr, pred_pha, true_fgr, true_bgr,  true_alpha, bgr_mask)
 
-        self.scaler.scale(loss['total']).backward()
+        self.scaler.scale(loss['bgr_l1']).backward()
         self.scaler.step(self.optimizer)
         self.scaler.update()
         self.optimizer.zero_grad()
         
         if self.rank == 0 and self.step % self.args.log_train_loss_interval == 0:
             for loss_name, loss_value in loss.items():
-                self.writer.add_scalar(f'train_{tag}_{loss_name}', loss_value, self.step)
+                if loss_name == 'bgr_l1':
+                    self.writer.add_scalar(f'train_{tag}_{loss_name}', loss_value, self.step)
             
         if self.rank == 0 and self.step % self.args.log_train_images_interval == 0:
-            self.writer.add_image('train_pred_pha', make_grid(pred_pha.flatten(0, 1), nrow=pred_pha.size(0)), self.step)
-            self.writer.add_image('train_true_alpha', make_grid(true_alpha.flatten(0, 1), nrow=true_alpha.size(0)), self.step)
-
             if "unprocess_metadata" in data:
-                pred_fgr = pred_fgr * true_alpha.gt(0)
-                true_fgr = true_fgr * true_alpha.gt(0)
                 pred_bgr = pred_bgr * bgr_mask
                 true_bgr = true_bgr * bgr_mask
-                pred_fgr_gamma = process_linear_image_raw(pred_fgr.flatten(0, 1), unprocess_metadata, apply_demosaic=False)
-                self.writer.add_image('train_pred_fgr_gamma', make_grid(pred_fgr_gamma, nrow=pred_fgr_gamma.size(0)), self.step)
 
-                true_fgr_gamma = process_linear_image_raw(true_fgr.flatten(0, 1), unprocess_metadata, apply_demosaic=False)
-                self.writer.add_image('train_true_fgr_gamma', make_grid(true_fgr_gamma, nrow=true_fgr_gamma.size(0)), self.step)
                 comp_burst_center_frame = comp_burst[:, 0:1]
                 comp_center_frame_gamma = process_linear_image_raw(comp_burst_center_frame.flatten(0, 1), unprocess_metadata, apply_demosaic=False)
                 self.writer.add_image('train_comp_burst_gamma', make_grid(comp_center_frame_gamma, nrow=comp_center_frame_gamma.size(0)), self.step)
@@ -213,8 +205,6 @@ class Trainer:
                 self.writer.add_image('train_true_bgr_gamma', make_grid(true_bgr_gamma, nrow=true_bgr_gamma.size(0)), self.step)
 
             else:
-                self.writer.add_image('train_pred_fgr', make_grid(pred_fgr.flatten(0, 1), nrow=pred_fgr.size(1)), self.step)
-                self.writer.add_image('train_fgrs_linear', make_grid(true_fgr.flatten(0, 1), nrow=fgrs_linear.size(1)), self.step)
                 self.writer.add_image('train_pred_bgr', make_grid(pred_bgr.flatten(0, 1), nrow=pred_bgr.size(1)), self.step)
                 self.writer.add_image('train_true_bgr', make_grid(true_bgr.flatten(0, 1), nrow=true_bgr.size(1)), self.step)
             
@@ -260,7 +250,7 @@ class Trainer:
                             loss = matting_loss_v2(pred_fgr, pred_bgr, pred_pha, true_fgr, true_bgr, true_alpha, bgr_mask)
                         # print("true_alpha.shape, true_fgr.shape", true_alpha.shape, true_fgr.shape)
                         batch_size = comp_burst.size(0)
-                        total_loss +=  loss['pha'].item() * batch_size
+                        total_loss +=  loss['bgr_l1'].item() * batch_size
                         total_count += batch_size
                        
                         
@@ -270,14 +260,8 @@ class Trainer:
                             self.writer.add_image('val_true_alpha', make_grid(true_alpha.flatten(0, 1), nrow=true_alpha.size(0)), self.step + validate_step)
                             
                             if "unprocess_metadata" in data:
-                                pred_fgr = pred_fgr * true_alpha.gt(0)
-                                true_fgr = true_fgr * true_alpha.gt(0)
                                 pred_bgr = pred_bgr * bgr_mask
                                 true_bgr = true_bgr * bgr_mask
-                                pred_fgr_gamma = process_linear_image_raw(pred_fgr.flatten(0, 1), unprocess_metadata, apply_demosaic=False)
-                                self.writer.add_image('val_pred_fgr_gamma', make_grid(pred_fgr_gamma, nrow=pred_fgr_gamma.size(0)), self.step + validate_step)
-                                true_fgr_gamma = process_linear_image_raw(true_fgr.flatten(0, 1), unprocess_metadata, apply_demosaic=False)
-                                self.writer.add_image('val_true_fgr_gamma', make_grid(true_fgr_gamma, nrow=true_fgr_gamma.size(0)), self.step + validate_step)
                                 comp_burst_center_frame = comp_burst[:, 0:1]
                                 comp_center_frame_gamma = process_linear_image_raw(comp_burst_center_frame.flatten(0, 1), unprocess_metadata, apply_demosaic=False)
                                 self.writer.add_image('val_comp_burst_gamma', make_grid(comp_center_frame_gamma, nrow=comp_center_frame_gamma.size(0)), self.step + validate_step)
@@ -287,11 +271,8 @@ class Trainer:
                                 self.writer.add_image('val_true_bgr_gamma', make_grid(true_bgr_gamma, nrow=true_bgr_gamma.size(0)), self.step + validate_step)
 
                             else:
-                                self.writer.add_image('val_pred_fgr', make_grid(pred_fgr.flatten(0, 1), nrow=pred_fgr.size(1)), self.step + validate_step)
-                                self.writer.add_image('val_fgrs_linear', make_grid(true_fgr.flatten(0, 1), nrow=fgrs_linear.size(1)), self.step + validate_step)
                                 self.writer.add_image('val_pred_bgr', make_grid(pred_bgr.flatten(0, 1), nrow=pred_bgr.size(1)), self.step + validate_step)
                                 self.writer.add_image('val_true_bgr', make_grid(true_bgr.flatten(0, 1), nrow=true_bgr.size(1)), self.step + validate_step)
-                            
                             self.writer.add_image('val_comp_burst', make_grid(comp_burst.flatten(0, 1), nrow=comp_burst.size(1)), self.step + validate_step)
                             
                         validate_step += 1

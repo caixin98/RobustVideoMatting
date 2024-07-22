@@ -1,0 +1,6 @@
+include 'configs/train_base.gin'
+Trainer.matting_subset = (["distinctions_human_train"], "distinctions_human_test")
+Trainer.log_dir = "logs/train_base_human_new"
+Trainer.checkpoint_dir = "logs/train_base_human_new/checkpoints"
+Trainer.checkpoint = "logs/train_base_human/checkpoints/epoch-339.pth"
+Trainer.epoch_start = 0

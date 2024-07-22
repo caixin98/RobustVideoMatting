@@ -1,0 +1,9 @@
+include 'configs/matting_human.gin'
+Trainer.log_dir = "logs/matting_human_overfitting"
+Trainer.checkpoint_dir = "logs/matting_human_overfitting/checkpoints"
+Trainer.matting_subset = (["distinctions_sample_train"], "distinctions_sample_train")
+Trainer.bg_subset = ([2], 2)
+Trainer.batch_size = 2
+Trainer.train_data = "data/burst_patch_overfit"
+Trainer.val_data = "data/burst_patch_overfit"
+Trainer.epoch_start = 0

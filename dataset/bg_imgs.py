@@ -19,6 +19,8 @@ class BackgroundImageDataset(Dataset):
     subset_mapping = {
         0: 'bg_20k_train',
         1: 'bg_20k_test',
+        2: 'bg_20k_sample_train',
+        3: 'bg_20k_sample_test',
     }
     def __init__(self, train_test_subset: subset_type, split: str = "train", samples_per_epoch: int = None):
         super().__init__()

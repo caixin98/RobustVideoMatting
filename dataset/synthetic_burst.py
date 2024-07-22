@@ -12,13 +12,13 @@ from .augmentation import MotionAugmentation
 from utils.image.synthesis_helper import generate_flow_field, apply_flow_field
 from utils.image.synthesis_helper import get_unprocessing_settings,unprocess_images, apply_noise
 from utils.image.trimap import make_trimap
-
+from utils.image.rgb2raw import process_linear_image_raw
 
 class ImageMatteAugmentation(MotionAugmentation):
     def __init__(self, size):
         super().__init__(
             size=size,
-            prob_fgr_affine=0.95,
+            prob_fgr_affine=1.0,
             prob_bgr_affine=0.0,
             prob_noise=0.05,
             prob_color_jitter=0.3,
@@ -76,7 +76,7 @@ class SyntheticBurstDataset(Dataset):
         metadata['bgr_flow_fields'] = bgr_flow_fields
         return fgrs, phas, bgrs, metadata
  
-    def rgb2raw(self, image, randomize_gain=True, add_noise=True):
+    def rgb2raw(self, image, randomize_gain=True, add_noise=True, device='cuda'):
         """Convert an RGB image to a 'raw' image simulating camera processing."""
         # unprocessing_params = get_unprocessing_settings()
 
@@ -87,7 +87,7 @@ class SyntheticBurstDataset(Dataset):
                                  "gamma":True,
                                  "add_noise":False,
                                  "noise_type":'samsung'}
-        
+        image = image.to(device)    
         image, unprocess_metadata = unprocess_images(image, unprocessing_params, randomize_gain)
         # Apply noise if specified
         if add_noise:
@@ -112,13 +112,16 @@ class SyntheticBurstDataset(Dataset):
         fgrs_gamma, alpha_burst, bgrs_gamma, motion_metadata = self.data2burst(fgr_gamma, phas, bgr_gamma)
         fgrs_bgrs_gamma = torch.cat([fgrs_gamma,bgrs_gamma], dim=0)
         # convert the gamma space to linear space
-        fgrs_bgrs_linear, unprocess_metadata = self.rgb2raw(fgrs_bgrs_gamma)
+        fgrs_bgrs_linear, unprocess_metadata = self.rgb2raw(fgrs_bgrs_gamma, device='cuda')
+        trimap_burst, alpha_burst = make_trimap(alpha_burst, dilation_size=20, apply_closing=True, device='cuda')
         fgrs_linear = fgrs_bgrs_linear[:self.burst_length]
         bgrs_linear = fgrs_bgrs_linear[self.burst_length:]
         comp_burst = fgrs_linear * alpha_burst + bgrs_linear * (1 - alpha_burst)
-      
-        trimap_burst, _ = make_trimap(alpha_burst, dilation_size=20, apply_closing=True)
+
+        unprocess_metadata["cam2rgb"] = unprocess_metadata["cam2rgb"][0]
+        # comp_burst_gamma = process_linear_image_raw(comp_burst[0:1], unprocess_metadata, apply_demosaic=False)
         datapoint = {'unprocess_metadata': unprocess_metadata, "motion_metadata": motion_metadata}
+
         # for k in ("alpha", 'fgr_gamma', 'bgr_gamma', 'fgr_linear', 'bgr_linear', 'comp_gamma','comp_linear', 
                 #   'fgrs_linear', 'bgrs_linear', 'fgrs_gamma', 'bgrs_gamma', 'alpha_burst', 'comp_burst', 'comp_burst_gamma', 'trimap_burst'):
 
@@ -237,7 +240,7 @@ class SyntheticBurstPatch(SyntheticBurstDataset):
             patch_size = (patch_size, patch_size)
         self.patch_size = patch_size
         self.current_group = []
-        self.patch_ratio = 0.2
+        self.patch_ratio = 0.05
         self.group_idx = 0
     
     def split_into_patches(self, data, patch_size, padding_mode='constant'):
@@ -260,7 +263,9 @@ class SyntheticBurstPatch(SyntheticBurstDataset):
         return patches
 
     def load_one_burst(self):
-        data = super().__getitem__(self.group_idx)
+        # random select one burst from the dataset
+        idx = random.randint(0,  super().__len__() - 1)
+        data = super().__getitem__(idx)
         self.group_idx += 1
         patch_data = {}
         for k in ('fgrs_linear', 'bgrs_linear', 'alpha_burst', 'comp_burst', 'trimap_burst'):
@@ -277,9 +282,12 @@ class SyntheticBurstPatch(SyntheticBurstDataset):
         for k in ('fgrs_linear', 'bgrs_linear', 'alpha_burst', 'comp_burst', 'trimap_burst'):
             if k in patch_data:
                 patch_data[k] = patch_data[k][top_k_idx]
+    
         patch_data_group = []
         for i in range(top_k):
-            patch_data_group.append({k: v[i] for k, v in patch_data.items()})
+            patch_data_case = {k: v[i] for k, v in patch_data.items()}
+            patch_data_case['unprocess_metadata'] = data['unprocess_metadata']
+            patch_data_group.append(patch_data_case)
         return patch_data_group
 
     
@@ -294,7 +302,8 @@ class SyntheticBurstPatch(SyntheticBurstDataset):
     def __getitem__(self, idx):
         if len(self.current_group) == 0:
             self.current_group = self.load_one_burst()
-        return self.current_group.pop()
+        data = self.current_group.pop()
+        return data 
 
     def __len__(self):
         width, height = self.size
@@ -302,7 +311,11 @@ class SyntheticBurstPatch(SyntheticBurstDataset):
         num_patches_width = width // patch_width + (width % patch_width > 0)
         num_patches_height = height // patch_height + (height % patch_height > 0)
         group_size = int(num_patches_height * num_patches_width * self.patch_ratio)
-        return int(super().__len__() * group_size)
+        # return int(super().__len__() * group_size)
+        if self.split == 'train':
+            return 2000
+        else:
+            return 500
 
 
         

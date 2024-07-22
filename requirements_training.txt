@@ -1,5 +1,9 @@
 easing_functions==1.0.4
-tensorboard==2.5.0
-torch==1.9.0
-torchvision==0.10.0
+tensorboard
+torch==2.2.2
+torchvision==0.17.2
 tqdm==4.61.1
+h5py
+opencv-python
+gin-config
+prefetch_generator

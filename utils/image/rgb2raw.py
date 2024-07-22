@@ -121,7 +121,6 @@ def apply_ccm(image, ccm):
     # with batch dim and BCHW tensor
     # ccm defined as ccm@color_vec = (colorvec.T @ ccm.T).T
     elif image.dim() == 4 and image.shape[1] == 3:
-    
         image = (image.permute([0, 2, 3, 1])[:, :, :, None, :] @ ccm.permute(
             [0, 2, 1])[:, None, None, ...]).squeeze(3).permute([0, 3, 1, 2])
         return image

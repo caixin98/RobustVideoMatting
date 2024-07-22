@@ -5,10 +5,10 @@ import torch.nn.functional as F
 
 
 # accept alpha channel and epsilon value, return trimap and modified alpha channel
-def make_trimap(alpha, epsilon=0.01, dilation_size=None, apply_closing=False, ignore_mask=None):
+def make_trimap(alpha, epsilon=0.01, dilation_size=None, apply_closing=False, ignore_mask=None, device='cuda'):
     # Adjust alpha values based on epsilon to avoid precision issues
     import time
-
+    alpha = alpha.to(device)
     alpha = torch.where(alpha < epsilon, torch.zeros_like(alpha), alpha)
     alpha = torch.where(alpha > 1 - epsilon, torch.ones_like(alpha), alpha)
 

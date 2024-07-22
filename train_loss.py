@@ -3,7 +3,7 @@ from torch.nn import functional as F
 
 # --------------------------------------------------------------------------------- Train Loss
 
-
+# matting loss for burst sequence
 def matting_loss(pred_fgr, pred_pha, true_fgr, true_pha):
     """
     Args:
@@ -16,6 +16,7 @@ def matting_loss(pred_fgr, pred_pha, true_fgr, true_pha):
     # Alpha losses
     loss['pha_l1'] = F.l1_loss(pred_pha, true_pha)
     loss['pha_laplacian'] = laplacian_loss(pred_pha.flatten(0, 1), true_pha.flatten(0, 1))
+    loss['pha'] = loss['pha_l1'] + loss['pha_laplacian']
     # loss['pha_coherence'] = F.mse_loss(pred_pha[:, 1:] - pred_pha[:, :-1],
     #                                    true_pha[:, 1:] - true_pha[:, :-1]) * 5
     # Foreground losses
@@ -32,6 +33,45 @@ def matting_loss(pred_fgr, pred_pha, true_fgr, true_pha):
     # loss['total'] = loss['pha_l1'] + loss['pha_laplacian'] + loss['fgr_l1']
     loss['total'] = loss['pha_l1'] + loss['pha_laplacian']
     return loss
+
+# matting loss for center frame, and with background loss added
+def matting_loss_v2(pred_fgr, pred_bgr, pred_pha, true_fgr, true_bgr, true_pha, bgr_mask = None):
+    """
+    Args:
+        pred_fgr: Shape(B, 3, H, W)
+        pred_bgr: Shape(B, 3, H, W)
+        pred_pha: Shape(B, 1, H, W)
+        true_fgr: Shape(B, 3, H, W)
+        true_bgr: Shape(B, 3, H, W)
+        true_pha: Shape(B, 1, H, W)
+    """
+    loss = dict()
+    # Alpha losses
+    # print(pred_pha.shape, true_pha.shape)
+    loss['pha_l1'] = F.l1_loss(pred_pha, true_pha)
+    loss['pha_laplacian'] = laplacian_loss(pred_pha.flatten(0, 1), true_pha.flatten(0, 1))
+    loss['pha'] = loss['pha_l1'] + loss['pha_laplacian']
+    # Foreground losses
+    true_msk = true_pha.gt(0)
+    pred_fgr = pred_fgr * true_msk
+    true_fgr = true_fgr * true_msk
+    loss['fgr_l1'] = F.l1_loss(pred_fgr, true_fgr)
+    # Background losses
+    if bgr_mask is not None:
+        pred_bgr = pred_bgr * bgr_mask
+        true_bgr = true_bgr * bgr_mask
+        loss['bgr_l1'] = F.l1_loss(pred_bgr, true_bgr) * 5
+    else:
+        loss['bgr_l1'] = F.l1_loss(pred_bgr, true_bgr) * 5
+    # Total
+    loss['total'] = loss['pha_l1'] + loss['pha_laplacian'] + loss['fgr_l1'] + loss['bgr_l1']
+    return loss
+
+
+
+
+
+
 
 def segmentation_loss(pred_seg, true_seg):
     """

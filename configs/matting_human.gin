@@ -1,0 +1,9 @@
+include 'configs/train_base_human.gin'
+Trainer.log_dir = "logs/matting_human"
+Trainer.checkpoint_dir = "checkpoints/matting_human"
+Trainer.model = "burstnet"
+Trainer.checkpoint = "checkpoints/matting_human/epoch-132.pth"
+Trainer.batch_size = 4
+Trainer.num_workers = 4
+Trainer.epoch_start = 132
+Trainer.checkpoint_save_interval = 1000

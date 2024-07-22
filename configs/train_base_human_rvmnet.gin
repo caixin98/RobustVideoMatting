@@ -1,0 +1,6 @@
+include 'configs/train_base_human.gin'
+Trainer.model = "rvmnet"
+Trainer.log_dir = "logs/train_base_human_rvmnet"
+Trainer.checkpoint = "logs/train_base_human_rvmnet/checkpoints/epoch-615.pth"
+Trainer.checkpoint_dir = "logs/train_base_human_rvmnet/checkpoints"
+Trainer.epoch_start = 616

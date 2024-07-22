@@ -36,6 +36,18 @@
             "img_pattern": "fgr/h_*.png",
             "mask_pattern": "pha/h_*.png",
             "preprocessing": "take_first_10"
+        },
+        "distinctions_human_train": {
+            "path": "Distinctions/train",
+            "img_pattern": "fgr/h_*.png",
+            "mask_pattern": "pha/h_*.png",
+            "preprocessing": null
+        },
+        "distinctions_human_test": {
+            "path": "Distinctions/train",
+            "img_pattern": "fgr/h_*.png",
+            "mask_pattern": "pha/h_*.png",
+            "preprocessing": null
         }
     },
 
@@ -43,13 +55,24 @@
         "bg_20k_train": {
             "path": "BG-20k/train",
             "img_pattern": "*.jpg",
-            "preprocessing": "take_first_10_bg"
+            "preprocessing": null
         },
         "bg_20k_test": {
             "path": "BG-20k/testval",
             "img_pattern": "*.jpg",
+            "preprocessing": null
+        },
+        "bg_20k_sample_train": {
+            "path": "BG-20k/train",
+            "img_pattern": "*.jpg",
+            "preprocessing": "take_first_10_bg"
+        },
+        "bg_20k_sample_test": {
+            "path": "BG-20k/testval",
+            "img_pattern": "*.jpg",
             "preprocessing": "take_first_10_bg"
         }
+
     },
     
     "zurich_raw": {

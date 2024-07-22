@@ -159,12 +159,12 @@ def unprocess_images(images, unprocessing_params, randomize_gain):
             rgb2cam = rgb2cam.repeat(images.size(0), 1, 1)
 
         # Approximately inverts global tone mapping.
-        use_smoothstep = unprocessing_params['smoothstep']
+        use_smoothstep = unprocessing_params.get('smoothstep', True)
         if use_smoothstep:
             images = rgb2raw.invert_smoothstep(images)
 
         # Inverts gamma compression.
-        use_gamma = unprocessing_params['gamma']
+        use_gamma = unprocessing_params.get('gamma', True)
         if use_gamma:
             images = rgb2raw.gamma_expansion(images)
 

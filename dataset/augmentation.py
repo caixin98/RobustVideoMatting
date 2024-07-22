@@ -162,7 +162,7 @@ class MotionAugmentation:
     def _motion_affine(self, *imgs):
         if self.motion_affine_params is None:
             degree = (-5, 5)
-            translate = (0.005, 0.005)
+            translate = (0.01, 0.01)
             scale_ranges = (0.9, 1.1)
             shears = (-3, 3)
         else:
